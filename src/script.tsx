@@ -1,5 +1,5 @@
 import { createFFmpeg } from "ffmpeg.wasm";
-import React, { useEffect, useState, Component, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { VideoStream } from "ytdl";
 import { getBlob, getInfo } from "./ytdl.ts";
@@ -191,7 +191,6 @@ function Page() {
                 setSubs(
                     all,
                 );
-                (window as any).HtmlDurationPicker.refresh();
             }
 
             setMessage(
@@ -619,6 +618,7 @@ function Page() {
                                             ) => (
                                                 <option
                                                     value={i}
+                                                    disabled={!format.hasVideo}
                                                 >
                                                     {format
                                                         .qualityLabel} {format
