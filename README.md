@@ -1,5 +1,5 @@
 # YTD
-A messy YouTube Downloader
+A messy YouTube Downloader.
 
 # Req
 Deno 1.33.1 ($PATH)
