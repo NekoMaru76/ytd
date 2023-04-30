@@ -2,7 +2,7 @@ import ytdl, { getInfo, VideoStream } from "ytdl";
 import ID from "./id.ts";
 import { opine, serveStatic, json } from "opine";
 
-const port = parseInt(Deno.args[0] || "8080");
+const port = parseInt(Deno.env.get("PORT") || "8080");
 const app = opine();
 
 app.use((_, res, next) => {
