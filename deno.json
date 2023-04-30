@@ -1,7 +1,7 @@
 {
     "tasks": {
         "build": "rm -rf dist && cp deno.json tsconfig.json && deno run -A https://deno.land/x/packup@v0.2.2/cli.ts build -s src/static -i import_map.json src/index.html && rm tsconfig.json",
-        "run": "deno run --allow-net --allow-read server.ts"
+        "run": "deno run --allow-net --allow-env --allow-read server.ts"
     },
     "importMap": "./import_map.json",
     "compilerOptions": {
