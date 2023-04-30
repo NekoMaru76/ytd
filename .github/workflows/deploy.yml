@@ -18,4 +18,6 @@ jobs:
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
-        run: deno task run
+        with:
+          project: "ytd"
+          entrypoint: "./server.ts" # TODO: update entrypoint
