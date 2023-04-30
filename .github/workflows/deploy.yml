@@ -13,6 +13,11 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v3
 
+      - name: Use Deno Version ${{ matrix.deno-version }}
+        uses: denolib/setup-deno@v2
+        with:
+          deno-version: ${{ matrix.deno-version }}
+
       - name: Build project
         run: deno task build
 
