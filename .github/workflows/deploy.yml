@@ -29,5 +29,5 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "ytd"
-          entrypoint: "./bin/main.ts" # TODO: update entrypoint
+          entrypoint: "./server.ts" # TODO: update entrypoint
 
