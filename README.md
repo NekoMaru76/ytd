@@ -1,3 +1,6 @@
+# Req
+Deno 1.33.1 ($PATH)
+
 # Run
 ```sh
 deno task build
