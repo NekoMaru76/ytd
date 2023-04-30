@@ -38,13 +38,8 @@ app.post("/download/:url", async (req, res) => {
         const stream = await ytdl(ID(url), {
             format: formatInfo
         });
-        const chunks: Uint8Array[] = [];
-
-        for await (const chunk of stream) {
-            chunks.push(chunk);
-        }
-
-        res.send(new Blob(chunks).stream());
+        
+        res.send(stream);
     } catch (e) {
         res.setStatus(500).send({ message: e.message });
     }
