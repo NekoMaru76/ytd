@@ -1,3 +1,3 @@
-const cmd = new Deno.Command("deno task run");
-
-await cmd.output();
+await Deno.run({
+    cmd: ["deno", "task", "run"]
+}).output();
