@@ -1,0 +1,20 @@
+{
+    "tasks": {
+        "build": "rm -rf dist && cp deno.json tsconfig.json && deno run -A https://deno.land/x/packup@v0.2.2/cli.ts build -s src/static -i import_map.json src/index.html && rm tsconfig.json",
+        "run": "deno run --allow-net --allow-read server.ts"
+    },
+    "importMap": "./import_map.json",
+    "compilerOptions": {
+        "lib": [
+            "dom", "dom.iterable", "dom.asynciterable", "deno.ns"
+        ],
+        "jsx": "react-jsx",
+        "jsxImportSource": "react"
+    },
+    "lint": {
+        "rules": {
+            "exclude": ["no-explicit-any"]
+        },
+        "exclude": ["dest"]
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "imports": {
+        "react": "https://esm.sh/react@17.0.2",
+        "react/": "https://esm.sh/react@17.0.2/",
+        "moment": "https://esm.sh/moment@2.29.4",
+        "mime": "https://esm.sh/mime-types@2.1.35?target=esnext",
+        "moment-duration-format": "https://esm.sh/moment-duration-format@2.3.2",
+        "react-dom": "https://esm.sh/react-dom@17.0.2",
+        "react-router-dom": "https://esm.sh/react-router-dom@5.2.0",
+        "ytdl": "https://deno.land/x/ytdl_core@v0.1.2/mod.ts",
+        "opine": "https://deno.land/x/opine@2.3.4/mod.ts",
+        "std/": "https://deno.land/std@0.178.0/",
+        "ffmpeg.wasm": "https://esm.sh/@ffmpeg.wasm/main@0.12.0?target=esnext"
+    }
+}
