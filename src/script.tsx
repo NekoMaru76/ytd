@@ -618,7 +618,7 @@ function Page() {
                                             ) => (
                                                 <option
                                                     value={i}
-                                                    disabled={!format.hasVideo}
+                                                    disabled={!format.hasVideo || format.mimeType?.includes("webm")}
                                                 >
                                                     {format
                                                         .qualityLabel} {format.mimeType} {format
