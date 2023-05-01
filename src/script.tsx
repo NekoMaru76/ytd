@@ -171,7 +171,7 @@ function Page() {
                 } = format;
 
                 if (hasVideo) {
-                    if (mimeType?.toLowerCase().includes("webm") || videoCodec?.toLowerCase().includes("av1")) continue;
+                    if (mimeType?.toLowerCase().includes("webm")) continue;
 
                     let videoFormat: VideoFormat = {
                         hasAudio,

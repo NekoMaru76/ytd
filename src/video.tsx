@@ -56,7 +56,7 @@ export default function VideoPage({
             if (!format.hasAudio && format.audio) {
                 exec = true;
                 const audioName = `audio.${
-                    extension(format.audio.codec) || "mp4a"
+                    extension(format.audio.codec) || "mp3"
                 }`;
                 const buf = await getBlob(url, format.audio.raw);
 
