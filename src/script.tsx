@@ -621,7 +621,7 @@ function Page() {
                                                     disabled={!format.hasVideo}
                                                 >
                                                     {format
-                                                        .qualityLabel} {format
+                                                        .qualityLabel} {format.mimeType} {format
                                                         .quality} {format
                                                         .videoCodec} {format
                                                         .audioCodec}
