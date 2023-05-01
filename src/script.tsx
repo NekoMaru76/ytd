@@ -206,6 +206,8 @@ function Page() {
                 if (videoFormat.hasAudio) continue;
 
                 for (const audioFormat of audioFormats) {
+                    if (audioFormat.codec.includes("opus")) continue;
+
                     const newFormat = {
                         ...videoFormat
                     };
