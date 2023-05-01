@@ -4,7 +4,6 @@ https://ytd.deno.dev
 
 # Req
 Deno 1.33.1 ($PATH)
-@swc/cli (-g)
 
 # Run
 ```sh
