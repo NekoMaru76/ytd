@@ -622,9 +622,7 @@ function Page() {
                                                 >
                                                     {format
                                                         .qualityLabel} {format.mimeType} {format
-                                                        .quality} {format
-                                                        .videoCodec} {format
-                                                        .audioCodec}
+                                                        .quality} 
                                                 </option>
                                             ),
                                         )}
