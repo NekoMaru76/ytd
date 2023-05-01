@@ -11,8 +11,8 @@ app.use((_, res, next) => {
     next();
 })
 app.use(json());
+app.get("/", (_, res) => res.redirect("/public/index.html"));
 app.use("/public", serveStatic("./dist"));
-app.get("/", (_, res) => res.redirect("/public"));
 app.get("/getInfo/:url", async (req, res) => {
     const url = req.params["url"];
 
