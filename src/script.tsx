@@ -3,29 +3,26 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { VideoStream } from "ytdl";
 import { getBlob, getInfo } from "./ytdl.ts";
-import moment from "moment";
-import "moment-duration-format";
+import { formatDuration } from "./utils.ts";
 import * as mime from "mime";
+import VideoPage from "./video.tsx";
+import type { AudioFormat, VideoFormat } from "./types.d.ts";
 
 const ffmpeg = createFFmpeg(
     {
         log: true,
     },
 );
-const formatDuration = (ms: number) =>
-    moment
-        .duration(
-            ms,
-        )
-        .format(
-            "hh:mm:ss",
-        )
-        .padStart(
-            4,
-            "0:0",
-        );
 
 function Page() {
+    const [
+        videoFormats,
+        setVideoFormats,
+    ] = useState<VideoFormat[]>([]);
+    const [
+        audioFormats,
+        setAudioFormats,
+    ] = useState<AudioFormat[]>([]);
     const [
         info,
         setInfo,
@@ -51,12 +48,6 @@ function Page() {
         setIsBusy,
     ] = useState(
         false,
-    );
-    const [
-        opt,
-        setOpt,
-    ] = useState(
-        "",
     );
     const [
         hardSub,
@@ -88,6 +79,12 @@ function Page() {
     ] = useState<
         string[]
     >([]);
+    const [
+        opt,
+        setOpt,
+    ] = useState(
+        "",
+    );
 
     useEffect(
         () => {
@@ -149,15 +146,76 @@ function Page() {
                 url,
             );
 
-            setMessage(
-                "Fetching the subtitles",
-            );
-
             const subs = info
                 .player_response
                 .captions
                 ?.playerCaptionsTracklistRenderer
                 .captionTracks;
+
+            const videoFormats: VideoFormat[] = [];
+            const audioFormats: AudioFormat[] = [];
+            const noAudioVideoFormats: VideoFormat[] = [];
+
+            for (
+                const format of info.formats
+            ) {
+                const {
+                    hasVideo,
+                    hasAudio,
+                    quality,
+                    videoCodec,
+                    qualityLabel,
+                    audioCodec,
+                    audioQuality,
+                    mimeType,
+                } = format;
+
+                if (hasVideo) {
+                    if (mimeType?.toLowerCase().includes("webm")) continue;
+
+                    let videoFormat: VideoFormat = {
+                        hasAudio,
+                        quality,
+                        qualityLabel,
+                        codec: videoCodec as string,
+                        mimeType: mimeType as string,
+                    };
+
+                    if (hasAudio) {
+                        videoFormat = {
+                            ...videoFormat,
+                            audio: {
+                                codec: audioCodec as string,
+                                quality: audioQuality as AudioFormat["quality"],
+                                raw: format
+                            },
+                        };
+
+                        videoFormats.push(videoFormat);
+                    } else noAudioVideoFormats.push(videoFormat);
+                } else {
+                    audioFormats.push({
+                        codec: audioCodec as string,
+                        quality: audioQuality as AudioFormat["quality"],
+                        raw: format
+                    });
+                }
+            }
+
+            for (const videoFormat of noAudioVideoFormats) {
+                if (videoFormat.hasAudio) continue;
+
+                for (const audioFormat of audioFormats) {
+                    const newFormat = {
+                        ...videoFormat
+                    };
+
+                    videoFormats.push({
+                        ...newFormat,
+                        audio: audioFormat
+                    });
+                }
+            }
 
             if (
                 subs
@@ -167,9 +225,6 @@ function Page() {
                 for (
                     const sub of subs
                 ) {
-                    setMessage(
-                        `Fetching subtitle "${sub.name.simpleText} (${sub.languageCode})"`,
-                    );
                     all
                         .push(
                             await fetch(
@@ -185,14 +240,16 @@ function Page() {
                         );
                 }
 
-                setInfo(
-                    info,
-                );
                 setSubs(
                     all,
                 );
             }
 
+            setVideoFormats(videoFormats);
+            setAudioFormats(audioFormats);
+            setInfo(
+                info,
+            );
             setMessage(
                 "Finished",
             );
@@ -283,526 +340,288 @@ function Page() {
                 );
         }
     };
-    const transcode = async () => {
-        setMessage(
-            "Start transcoding",
-        );
 
-        if (
-            blob &&
-            info
-        ) {
-            const ext = mime
-                .extension(
-                    blob
-                        .type,
-                ) ||
-                "mp4";
-            const name = `file.${ext}`;
-            const outName = `out.${ext}`;
-            const cmd = [];
-            const inputs = [
-                "-i",
-                name,
-            ];
-            const maps = [
-                "-map",
-                `0`,
-            ];
-            const metadatas = [];
-
-            //const subType = ext.toLowerCase() === "mkv" ? "mov_text" : "srt";
-            let exec = false;
-
-            ffmpeg
-                .FS(
-                    "writeFile",
-                    name,
-                    new Uint8Array(
-                        await blob
-                            .arrayBuffer(),
-                    ),
-                );
-
-            for (
-                let i = 0;
-                i <
-                    softSubs
-                        .length;
-                i++
-            ) {
-                const softSub = softSubs[
-                    i
-                ];
-                const name = `${softSub}.vtt`;
-
-                ffmpeg
-                    .FS(
-                        "writeFile",
-                        name,
-                        subs[
-                            parseInt(
-                                softSub,
-                            )
-                        ],
-                    );
-                inputs
-                    .push(
-                        "-i",
-                        name,
-                    );
-                maps
-                    .push(
-                        "-map",
-                        `${
-                            maps
-                                .length /
-                            2
-                        }`,
-                    );
-                metadatas
-                    .push(
-                        `-metadata:s:s:${
-                            metadatas
-                                .length /
-                            2
-                        }`,
-                        `language=${
-                            info
-                                .player_response
-                                .captions
-                                ?.playerCaptionsTracklistRenderer
-                                .captionTracks[
+    return isReady
+        ? (
+            <>
+                {info
+                    ? (
+                        <p>
+                            Title: {info
+                                .videoDetails
+                                .title}
+                            <br />
+                            Duration: {formatDuration(
+                                1000 *
                                     parseInt(
-                                        softSub,
-                                    )
-                                ].languageCode
-                        }`,
-                    );
-            }
-
-            cmd
-                .push(
-                    ...inputs,
-                    ...maps,
-                    ...metadatas,
-                );
-
-            if (
-                hardSub
-            ) {
-                const name = `${hardSub}.vtt`;
-
-                ffmpeg
-                    .FS(
-                        "writeFile",
-                        name,
-                        subs[
-                            parseInt(
-                                hardSub,
-                            )
-                        ],
-                    );
-                cmd
-                    .push(
-                        `-vf`,
-                        `subtitles=${name}:fontsdir='/fonts/'`,
-                    );
-
-                exec = true;
-            }
-
-            if (
-                softSubs
-                    .length
-            ) {
-                cmd
-                    .push(
-                        "-c:v",
-                        "copy",
-                        "-c:a",
-                        "copy",
-                        "-c:s",
-                        "mov_text",
-                    );
-            }
-
-            if (
-                !softSubs
-                    .length ||
-                !exec
-            ) {
-                ffmpeg
-                    .FS(
-                        "writeFile",
-                        outName,
-                        new Uint8Array(
-                            await blob
-                                .arrayBuffer(),
-                        ),
-                    );
-                //for easier to write purpose
-            }
-
-            const all = [
-                ...cmd,
-                "-c:v",
-                "libx264",
-                "-preset",
-                "ultrafast",
-                outName,
-            ];
-            await ffmpeg
-                .run(
-                    ...all,
-                );
-            console
-                .log(
-                    all,
-                );
-
-            const data = ffmpeg
-                .FS(
-                    "readFile",
-                    outName,
-                );
-
-            setOut(
-                new Blob(
-                    [
-                        data
-                            .buffer,
-                    ],
-                    {
-                        type: blob
-                            .type,
-                    },
-                ),
-            );
-        }
-
-        setMessage(
-            "Complete transcoding",
-        );
-        clear();
-    };
-
-    return (
-        !isReady
-            ? (
-                <>
-                    Loading ffmpeg-core.js
-                </>
-            )
-            : (
-                <>
-                    {info
-                        ? (
-                            <p>
-                                Title: {info
-                                    .videoDetails
-                                    .title}
-                                <br />
-                                Duration: {formatDuration(
-                                    1000 *
-                                        parseInt(
-                                            info
-                                                .videoDetails
-                                                .lengthSeconds,
-                                        ),
-                                )}
-                                <br />
-                                URL:{" "}
-                                <a
-                                    href={info
-                                        .formats[
-                                            parseInt(
-                                                opt,
-                                            )
-                                        ]?.url ||
                                         info
                                             .videoDetails
-                                            .video_url}
-                                >
-                                    Link
-                                </a>
-                                <br />
-                                <img
-                                    src={info
-                                        .videoDetails
-                                        .thumbnails[
-                                            0
-                                        ].url}
-                                    width={info
-                                        .videoDetails
-                                        .thumbnails[
-                                            0
-                                        ].width}
-                                    height={info
-                                        .videoDetails
-                                        .thumbnails[
-                                            0
-                                        ].height}
-                                >
-                                </img>
-                            </p>
-                        )
-                        : (
-                            <>
-                            </>
-                        )}
-                    {blob
-                        ? (
-                            <>
-                                <video
-                                    src={URL
-                                        .createObjectURL(
-                                            blob,
-                                        )}
-                                >
-                                </video>
-                            </>
-                        )
-                        : (
-                            <>
-                            </>
-                        )}
-                    <p>
-                        {message}
-                    </p>
-
-                    URL:{" "}
-                    <input
-                        type="text"
-                        value={url}
-                        onChange={(
-                            v,
-                        ) => setURL(
-                            v.target
-                                .value,
-                        )}
-                    />
-                    <button
-                        disabled={isBusy}
-                        onClick={fetchInfo}
-                    >
-                        Get Info
-                    </button>
-                    <br />
-                    {info
-                        ? (
-                            <>
-                                <select
-                                    value={opt}
-                                    onChange={(
-                                        e,
-                                    ) => setOpt(
-                                        e.target
-                                            .value,
-                                    )}
-                                    className="form-select"
-                                    id="format"
-                                >
-                                    <option
-                                        value=""
-                                        selected
-                                    >
-                                        Formats
-                                    </option>
-                                    {info
-                                        .formats
-                                        .map(
-                                            (
-                                                format,
-                                                i,
-                                            ) => (
-                                                <option
-                                                    value={i}
-                                                    disabled={!format.hasVideo || format.mimeType?.includes("webm")}
-                                                >
-                                                    {format
-                                                        .qualityLabel} {format.mimeType} {format
-                                                        .quality} 
-                                                </option>
-                                            ),
-                                        )}
-                                </select>
-                                <select
-                                    value={hardSub}
-                                    onChange={(
-                                        e,
-                                    ) => setHardSub(
-                                        e.target
-                                            .value,
-                                    )}
-                                    className="form-select"
-                                >
-                                    <option
-                                        value=""
-                                        selected
-                                    >
-                                        Hard Subtitle
-                                    </option>
-                                    {info
-                                        .player_response
-                                        .captions
-                                        ?.playerCaptionsTracklistRenderer
-                                        .captionTracks
-                                        .map(
-                                            (
-                                                track,
-                                                i,
-                                            ) => (
-                                                <option
-                                                    value={i}
-                                                >
-                                                    {track
-                                                        .name
-                                                        .simpleText} ({track
-                                                        .languageCode})
-                                                </option>
-                                            ),
-                                        )}
-                                </select>
-                                <fieldset>
-                                    <legend>
-                                        Select Soft Subtitles:
-                                    </legend>
-
-                                    {info
-                                        .player_response
-                                        .captions
-                                        ?.playerCaptionsTracklistRenderer
-                                        .captionTracks
-                                        .map(
-                                            (
-                                                track,
-                                                i,
-                                            ) => (
-                                                <>
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`ss-${i}`}
-                                                        name="ss"
-                                                        value={i}
-                                                        onChange={(
-                                                            e,
-                                                        ) => {
-                                                            if (
-                                                                e.target
-                                                                    .checked &&
-                                                                !softSubs
-                                                                    .includes(
-                                                                        `${i}`,
-                                                                    )
-                                                            ) {
-                                                                setSoftSubs(
-                                                                    [
-                                                                        ...softSubs,
-                                                                        `${i}`,
-                                                                    ],
-                                                                );
-                                                            } else if (
-                                                                !e.target
-                                                                    .checked &&
-                                                                softSubs
-                                                                    .includes(
-                                                                        `${i}`,
-                                                                    )
-                                                            ) {
-                                                                const ind =
-                                                                    softSubs
-                                                                        .indexOf(
-                                                                            `${i}`,
-                                                                        );
-
-                                                                if (
-                                                                    ind !==
-                                                                        -1
-                                                                ) {
-                                                                    softSubs
-                                                                        .splice(
-                                                                            ind,
-                                                                            1,
-                                                                        );
-                                                                    setSoftSubs(
-                                                                        softSubs,
-                                                                    );
-                                                                }
-                                                            }
-                                                        }}
-                                                        checked={softSubs
-                                                            .includes(
-                                                                `${i}`,
-                                                            )}
-                                                        multiple
-                                                    />
-                                                    {track
-                                                        .name
-                                                        .simpleText +
-                                                        " (" +
-                                                        track
-                                                            .languageCode +
-                                                        ")"}
-                                                    <br />
-                                                </>
-                                            ),
-                                        ) ||
-                                        (
-                                            <>
-                                            </>
-                                        )}
-                                </fieldset>
-
-                                <button
-                                    disabled={isBusy ||
-                                        !opt}
-                                    onClick={download}
-                                >
-                                    Download
-                                </button>
-                                <br />
-                            </>
-                        )
-                        : (
-                            <>
-                            </>
-                        )}
-                    <button
-                        onClick={transcode}
-                        disabled={isBusy ||
-                            !(blob &&
-                                info)}
-                    >
-                        Transcode
-                    </button>
-                    {out
-                        ? (
+                                            .lengthSeconds,
+                                    ),
+                            )}
+                            <br />
+                            URL:{" "}
                             <a
-                                href={URL
-                                    .createObjectURL(
-                                        out,
-                                    )}
-                                download={`${info?.videoDetails.title}.${
-                                    mime
-                                        .extension(
-                                            out
-                                                .type,
+                                href={info
+                                    .formats[
+                                        parseInt(
+                                            opt,
                                         )
-                                }`}
+                                    ]?.url ||
+                                    info
+                                        .videoDetails
+                                        .video_url}
                             >
-                                <button>
-                                    Save
-                                </button>
+                                Link
                             </a>
-                        )
-                        : (
-                            <>
-                            </>
-                        )}
-                </>
-            )
-    );
+                            <br />
+                            <img
+                                src={info
+                                    .videoDetails
+                                    .thumbnails[
+                                        0
+                                    ].url}
+                                width={info
+                                    .videoDetails
+                                    .thumbnails[
+                                        0
+                                    ].width}
+                                height={info
+                                    .videoDetails
+                                    .thumbnails[
+                                        0
+                                    ].height}
+                            >
+                            </img>
+                            <select
+                                value={hardSub}
+                                onChange={(
+                                    e,
+                                ) => setHardSub(
+                                    e.target
+                                        .value,
+                                )}
+                                className="form-select"
+                            >
+                                <option
+                                    value=""
+                                    selected
+                                >
+                                    Hard Subtitle
+                                </option>
+                                {info
+                                    .player_response
+                                    .captions
+                                    ?.playerCaptionsTracklistRenderer
+                                    .captionTracks
+                                    .map(
+                                        (
+                                            track,
+                                            i,
+                                        ) => (
+                                            <option
+                                                value={i}
+                                            >
+                                                {track
+                                                    .name
+                                                    .simpleText} ({track
+                                                    .languageCode})
+                                            </option>
+                                        ),
+                                    )}
+                            </select>
+                            <fieldset>
+                                <legend>
+                                    Select Soft Subtitles:
+                                </legend>
+
+                                {info
+                                    .player_response
+                                    .captions
+                                    ?.playerCaptionsTracklistRenderer
+                                    .captionTracks
+                                    .map(
+                                        (
+                                            track,
+                                            i,
+                                        ) => (
+                                            <>
+                                                <input
+                                                    type="checkbox"
+                                                    id={`ss-${i}`}
+                                                    name="ss"
+                                                    value={i}
+                                                    onChange={(
+                                                        e,
+                                                    ) => {
+                                                        if (
+                                                            e.target
+                                                                .checked &&
+                                                            !softSubs
+                                                                .includes(
+                                                                    `${i}`,
+                                                                )
+                                                        ) {
+                                                            setSoftSubs(
+                                                                [
+                                                                    ...softSubs,
+                                                                    `${i}`,
+                                                                ],
+                                                            );
+                                                        } else if (
+                                                            !e.target
+                                                                .checked &&
+                                                            softSubs
+                                                                .includes(
+                                                                    `${i}`,
+                                                                )
+                                                        ) {
+                                                            const ind = softSubs
+                                                                .indexOf(
+                                                                    `${i}`,
+                                                                );
+
+                                                            if (
+                                                                ind !==
+                                                                    -1
+                                                            ) {
+                                                                softSubs
+                                                                    .splice(
+                                                                        ind,
+                                                                        1,
+                                                                    );
+                                                                setSoftSubs(
+                                                                    softSubs,
+                                                                );
+                                                            }
+                                                        }
+                                                    }}
+                                                    checked={softSubs
+                                                        .includes(
+                                                            `${i}`,
+                                                        )}
+                                                    multiple
+                                                />
+                                                {track
+                                                    .name
+                                                    .simpleText +
+                                                    " (" +
+                                                    track
+                                                        .languageCode +
+                                                    ")"}
+                                                <br />
+                                            </>
+                                        ),
+                                    ) ||
+                                    (
+                                        <>
+                                        </>
+                                    )}
+                            </fieldset>
+
+                            <button
+                                disabled={isBusy ||
+                                    !opt}
+                                onClick={download}
+                            >
+                                Download
+                            </button>
+                            <br />
+                            {out
+                                ? (
+                                    <a
+                                        href={URL
+                                            .createObjectURL(
+                                                out,
+                                            )}
+                                        download={`${info?.videoDetails.title}.${
+                                            mime
+                                                .extension(
+                                                    out
+                                                        .type,
+                                                )
+                                        }`}
+                                    >
+                                        <button>
+                                            Save
+                                        </button>
+                                    </a>
+                                )
+                                : (
+                                    <>
+                                    </>
+                                )}
+                        </p>
+                    )
+                    : (
+                        <>
+                        </>
+                    )}
+                {blob
+                    ? (
+                        <>
+                            <video
+                                src={URL
+                                    .createObjectURL(
+                                        blob,
+                                    )}
+                            >
+                            </video>
+                        </>
+                    )
+                    : (
+                        <>
+                        </>
+                    )}
+                <p>
+                    {message}
+                </p>
+
+                URL:{" "}
+                <input
+                    type="text"
+                    value={url}
+                    onChange={(
+                        v,
+                    ) => setURL(
+                        v.target
+                            .value,
+                    )}
+                />
+                <button
+                    disabled={isBusy}
+                    onClick={fetchInfo}
+                >
+                    Get Info
+                </button>
+                <br />
+                {info
+                    ? (
+                        <VideoPage
+                            url={url}
+                            videoFormats={videoFormats}
+                            audioFormats={audioFormats}
+                            clear={clear}
+                            subs={[subs, setSubs]}
+                            blob={[blob, setBlob]}
+                            hardSub={[hardSub, setHardSub]}
+                            softSubs={[softSubs, setSoftSubs]}
+                            info={[info, setInfo]}
+                            out={[out, setOut]}
+                            isBusy={[isBusy, setIsBusy]}
+                            message={[message, setMessage]}
+                            ffmpeg={ffmpeg}
+                            opt={[opt, setOpt]}
+                        />
+                    )
+                    : <></>}
+            </>
+        )
+        : (
+            <>
+                Loading ffmpeg-core.js
+            </>
+        );
 }
 
 ReactDOM
